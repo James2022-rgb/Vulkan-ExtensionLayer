@@ -16,6 +16,16 @@
 
 #include <stdlib.h>
 
+#ifdef _WIN32
+#include <debugapi.h>
+#endif
+
+#ifdef _WIN32
+#define BUILTIN_TRAP DebugBreak();
+#else // _WIN32
+#define BUILTIN_TRAP __builtin_trap();
+#endif
+
 // Basic Logging Support
 #ifdef __ANDROID__
 #include <android/log.h>
@@ -28,7 +38,11 @@
 #define LOG(...)                  \
     fprintf(stdout, __VA_ARGS__); \
     fflush(stdout);
-#endif
+#define LOG_FATAL(...)            \
+    fprintf(stdout, __VA_ARGS__); \
+    fflush(stdout);               \
+    BUILTIN_TRAP;
+#endif // __ANDROID__
 
 // Define own assert because <cassert> on android will not actually assert anything
 #ifdef __ANDROID__
