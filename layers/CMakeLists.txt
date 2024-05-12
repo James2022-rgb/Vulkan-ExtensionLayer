@@ -57,6 +57,14 @@ if (NOT WIN32)
     list(APPEND EXTENSION_LAYERS "VkLayer_khronos_timeline_semaphore")
 endif()
 
+if (NOT IOS)
+    add_library(VkLayer_khronos_dynamic_rendering MODULE)
+    target_sources(VkLayer_khronos_dynamic_rendering PRIVATE
+        dynamic_rendering.cpp
+    )
+    list(APPEND EXTENSION_LAYERS "VkLayer_khronos_dynamic_rendering")
+endif()
+
 foreach(extension_layer ${EXTENSION_LAYERS})
     lunarg_target_compiler_configurations(${extension_layer} ${BUILD_WERROR})
     target_include_directories(${extension_layer} PRIVATE .)

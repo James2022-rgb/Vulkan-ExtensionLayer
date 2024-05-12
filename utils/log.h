@@ -22,7 +22,7 @@
 
 #ifdef _WIN32
 #define BUILTIN_TRAP DebugBreak();
-#else // _WIN32
+#else  // _WIN32
 #define BUILTIN_TRAP __builtin_trap();
 #endif
 
@@ -42,7 +42,7 @@
     fprintf(stdout, __VA_ARGS__); \
     fflush(stdout);               \
     BUILTIN_TRAP;
-#endif // __ANDROID__
+#endif  // __ANDROID__
 
 // Define own assert because <cassert> on android will not actually assert anything
 #ifdef __ANDROID__
@@ -52,7 +52,14 @@
             LOG_FATAL("ASSERT: %s at %s:%d\n", #condition, __FILE__, __LINE__) \
         }                                                                      \
     } while (0)
+#define RELEASE_ASSERT(condition) ASSERT(condition)
 #else  // __ANDROID__
 #include <cassert>
 #define ASSERT(condition) assert(condition);
+#define RELEASE_ASSERT(condition)                                              \
+    do {                                                                       \
+        if (!(condition)) {                                                    \
+            LOG_FATAL("ASSERT: %s at %s:%d\n", #condition, __FILE__, __LINE__) \
+        }                                                                      \
+    } while (0)
 #endif
