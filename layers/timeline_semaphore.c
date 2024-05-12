@@ -30,6 +30,7 @@
 
 #include "hash_table.h"
 #include "list.h"
+#include "log.h"
 
 #include "vk_alloc.h"
 #include "vk_util.h"
@@ -2228,11 +2229,16 @@ static size_t vk_device_create_info_type_size(
         return sizeof(VkPhysicalDeviceVulkan11Features);
     case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES:
         return sizeof(VkPhysicalDeviceVulkan12Features);
+    case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES:
+        return sizeof(VkPhysicalDeviceVulkan13Features);
     case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_MEMORY_MODEL_FEATURES:
         return sizeof(VkPhysicalDeviceVulkanMemoryModelFeatures);
     case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_YCBCR_IMAGE_ARRAYS_FEATURES_EXT:
         return sizeof(VkPhysicalDeviceYcbcrImageArraysFeaturesEXT);
+    case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES_KHR:
+        return sizeof(VkPhysicalDeviceDynamicRenderingFeaturesKHR);
     default:
+        LOG("Unknown structure for VkDeviceCreateInfo::pNext %u", item->sType);
         unreachable("Unknown structure for VkDeviceCreateInfo::pNext");
     }
     return 0;
