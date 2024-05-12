@@ -1,0 +1,6 @@
+
+LIBRARY VkLayer_khronos_dynamic_rendering
+EXPORTS
+vkGetInstanceProcAddr
+vkGetDeviceProcAddr
+vkNegotiateLoaderLayerInterfaceVersion
