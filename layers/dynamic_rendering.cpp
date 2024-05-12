@@ -935,6 +935,8 @@ VKAPI_ATTR void VKAPI_CALL DestroyImage(VkDevice device, VkImage image, const Vk
     auto device_data = GetDeviceData(device);
     device_data->vtable.DestroyImage(device, image, pAllocator);
     device_data->image_map.erase(image);
+
+    // TODO: Remove VkFramebuffer objects that reference this VkImage.
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL CreateImageView(VkDevice device, const VkImageViewCreateInfo* pCreateInfo,
@@ -1026,8 +1028,10 @@ VKAPI_ATTR VkResult VKAPI_CALL CreateGraphicsPipelines(VkDevice device, VkPipeli
 
         for (auto chain = reinterpret_cast<VkBaseInStructure const*>(pCreateInfos->pNext); chain != nullptr; chain = chain->pNext) {
             switch (chain->sType) {
+                // The sTypes we support:
                 case VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO: {
                 } break;
+                // TODO: We want to support some of these sTypes if possible.
                 case VK_STRUCTURE_TYPE_ATTACHMENT_SAMPLE_COUNT_INFO_AMD:
                 case VK_STRUCTURE_TYPE_EXTERNAL_FORMAT_ANDROID:
                 case VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_LIBRARY_CREATE_INFO_EXT:
@@ -1157,8 +1161,7 @@ VKAPI_ATTR void VKAPI_CALL CmdBeginRendering(VkCommandBuffer commandBuffer, cons
 
     // TODO: These are our current assumptions.
     {
-        ASSERT((pRenderingInfo->flags & (VK_RENDERING_CONTENTS_SECONDARY_COMMAND_BUFFERS_BIT_KHR | VK_RENDERING_SUSPENDING_BIT |
-                                         VK_RENDERING_RESUMING_BIT)) == 0);
+        ASSERT((pRenderingInfo->flags & VK_RENDERING_CONTENTS_SECONDARY_COMMAND_BUFFERS_BIT_KHR) == 0);
         ASSERT(pRenderingInfo->viewMask == 0);
     }
 
@@ -1172,10 +1175,20 @@ VKAPI_ATTR void VKAPI_CALL CmdBeginRendering(VkCommandBuffer commandBuffer, cons
         render_pass_desc.subpass_descs.emplace_back();
         SubpassDesc& subpass_desc = render_pass_desc.subpass_descs.back();
 
-        auto SetAttachmentSignature = [](AttachmentSignature& dst, VkRenderingAttachmentInfoKHR const& attachment_info,
-                                         DeviceData const* device_data) {
+        auto SetAttachmentSignature = [pRenderingInfo](AttachmentSignature& dst,
+                                                       VkRenderingAttachmentInfoKHR const& attachment_info,
+                                                       DeviceData const* device_data) {
             // TODO: We assume that `VK_ATTACHMENT_STORE_OP_NONE_KHR` is not used.
             ASSERT(attachment_info.storeOp != VK_ATTACHMENT_STORE_OP_NONE_KHR);
+
+            VkAttachmentLoadOp load_op = attachment_info.loadOp;
+            VkAttachmentStoreOp store_op = attachment_info.storeOp;
+            if (pRenderingInfo->flags & VK_RENDERING_SUSPENDING_BIT_KHR) {
+                store_op = VK_ATTACHMENT_STORE_OP_STORE;
+            }
+            if (pRenderingInfo->flags & VK_RENDERING_RESUMING_BIT_KHR) {
+                load_op = VK_ATTACHMENT_LOAD_OP_LOAD;
+            }
 
             VkImage image = VK_NULL_HANDLE;
             {
@@ -1193,11 +1206,11 @@ VKAPI_ATTR void VKAPI_CALL CmdBeginRendering(VkCommandBuffer commandBuffer, cons
             if (vkuFormatIsStencilOnly(image_data.format)) {
                 dst.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
                 dst.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-                dst.stencilLoadOp = attachment_info.loadOp;
-                dst.stencilStoreOp = attachment_info.storeOp;
+                dst.stencilLoadOp = load_op;
+                dst.stencilStoreOp = store_op;
             } else {
-                dst.loadOp = attachment_info.loadOp;
-                dst.storeOp = attachment_info.storeOp;
+                dst.loadOp = load_op;
+                dst.storeOp = store_op;
                 dst.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
                 dst.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
             }
