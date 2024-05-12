@@ -156,13 +156,15 @@ struct RenderPassDesc final {
 struct FramebufferDesc final {
     VkRenderPass render_pass = VK_NULL_HANDLE;
     VkRect2D render_area = {{0, 0}, {0, 0}};
+    uint32_t layer_count = 0;
     vku::small::vector<VkImageView, 4> attachments;
 
     friend bool operator==(FramebufferDesc const& lhs, FramebufferDesc const& rhs) {
         return lhs.render_pass == rhs.render_pass && lhs.render_area.offset.x == rhs.render_area.offset.x &&
                lhs.render_area.offset.y == rhs.render_area.offset.y &&
                lhs.render_area.extent.width == rhs.render_area.extent.width &&
-               lhs.render_area.extent.height == rhs.render_area.extent.height && lhs.attachments == rhs.attachments;
+               lhs.render_area.extent.height == rhs.render_area.extent.height && lhs.attachments == rhs.attachments &&
+               lhs.layer_count == rhs.layer_count;
     }
 
     struct Hasher final {
@@ -170,6 +172,7 @@ struct FramebufferDesc final {
             size_t res = 17;
             APPEND_HASH(v.render_pass);
             APPEND_HASH(v.render_area);
+            APPEND_HASH(v.layer_count);
             APPEND_HASH_ARRAY(v.attachments.data(), v.attachments.size(), v.attachments.size());
             return res;
         }
@@ -365,7 +368,7 @@ class FramebufferPool final {
         create_info.pAttachments = desc.attachments.data();
         create_info.width = desc.render_area.extent.width;
         create_info.height = desc.render_area.extent.height;
-        create_info.layers = 1;  // TODO: layers ?
+        create_info.layers = desc.layer_count;
 
         VkFramebuffer framebuffer;
         VkResult result = create_framebuffer(device, &create_info, nullptr, &framebuffer);
@@ -1244,6 +1247,7 @@ VKAPI_ATTR void VKAPI_CALL CmdBeginRendering(VkCommandBuffer commandBuffer, cons
     {
         framebuffer_desc.render_pass = render_pass;
         framebuffer_desc.render_area = pRenderingInfo->renderArea;
+        framebuffer_desc.layer_count = pRenderingInfo->layerCount;
 
         for (uint32_t i = 0; i < pRenderingInfo->colorAttachmentCount; ++i) {
             VkRenderingAttachmentInfoKHR const& attachment_info = pRenderingInfo->pColorAttachments[i];
