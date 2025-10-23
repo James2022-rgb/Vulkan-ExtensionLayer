@@ -570,18 +570,11 @@ void InitLayerSettings(const VkInstanceCreateInfo* pCreateInfo, const VkAllocati
     };
     uint32_t setting_name_count = static_cast<uint32_t>(std::size(setting_names));
 
-    uint32_t unknown_setting_count = 0;
-    vkuGetUnknownSettings(create_info, setting_name_count, setting_names, &unknown_setting_count, nullptr);
+    std::vector<const char*> unknown_settings;
+    vkuGetUnknownSettings(layer_setting_set, setting_name_count, setting_names, create_info, unknown_settings);
 
-    if (unknown_setting_count > 0) {
-        std::vector<const char*> unknown_settings;
-        unknown_settings.resize(unknown_setting_count);
-
-        vkuGetUnknownSettings(create_info, setting_name_count, setting_names, &unknown_setting_count, &unknown_settings[0]);
-
-        for (std::size_t i = 0, n = unknown_settings.size(); i < n; ++i) {
-            LOG("Unknown %s setting listed in VkLayerSettingsCreateInfoEXT, this setting is ignored.\n", unknown_settings[i]);
-        }
+    for (std::size_t i = 0, n = unknown_settings.size(); i < n; ++i) {
+        LOG("Unknown %s setting listed in VkLayerSettingsCreateInfoEXT, this setting is ignored.\n", unknown_settings[i]);
     }
 
     if (vkuHasLayerSetting(layer_setting_set, kLayerSettingsForceEnable)) {
@@ -609,7 +602,7 @@ VKAPI_ATTR VkResult VKAPI_CALL CreateInstance(const VkInstanceCreateInfo* pCreat
     if (result != VK_SUCCESS) {
         return result;
     }
-    try {
+    {
         auto instance_data =
             std::make_shared<InstanceData>(*pInstance, gpa, pAllocator ? pAllocator : &extension_layer::kDefaultAllocator);
 
@@ -618,10 +611,6 @@ VKAPI_ATTR VkResult VKAPI_CALL CreateInstance(const VkInstanceCreateInfo* pCreat
         instance_data->api_version = pCreateInfo->pApplicationInfo ? pCreateInfo->pApplicationInfo->apiVersion : 0;
 
         InitLayerSettings(pCreateInfo, pAllocator, &instance_data->layer_settings);
-    } catch (const std::bad_alloc&) {
-        auto destroy_instance = reinterpret_cast<PFN_vkDestroyInstance>(gpa(NULL, "vkDestroyInstance"));
-        destroy_instance(*pInstance, pAllocator);
-        result = VK_ERROR_OUT_OF_HOST_MEMORY;
     }
     return result;
 }
@@ -858,7 +847,7 @@ VKAPI_ATTR VkResult VKAPI_CALL CreateDevice(VkPhysicalDevice physicalDevice, con
 
     DeviceFeatures features(effective_api_version, pCreateInfo);
 
-    try {
+    {
         bool enable_layer =
             (features.dynamic_rendering && (!pdd->lower_has_dynamic_rendering || instance_data->layer_settings.force_enable));
         // Filter out our extension name and feature struct, in a copy of the create info.
@@ -897,10 +886,6 @@ VKAPI_ATTR VkResult VKAPI_CALL CreateDevice(VkPhysicalDevice physicalDevice, con
         auto device_data = std::make_shared<DeviceData>(*pDevice, gdpa, features, enable_layer, alloccb);
 
         device_data_map.insert(DispatchKey(*pDevice), device_data);
-    } catch (const std::bad_alloc&) {
-        auto destroy_device = reinterpret_cast<PFN_vkDestroyDevice>(gdpa(*pDevice, "vkDestroyDevice"));
-        destroy_device(*pDevice, pAllocator);
-        result = VK_ERROR_OUT_OF_HOST_MEMORY;
     }
     return result;
 }
