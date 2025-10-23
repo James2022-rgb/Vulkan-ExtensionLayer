@@ -2288,10 +2288,7 @@ static size_t vk_device_create_info_type_size(
         return sizeof(VkPhysicalDeviceYcbcrImageArraysFeaturesEXT);
     case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ZERO_INITIALIZE_WORKGROUP_MEMORY_FEATURES:
         return sizeof(VkPhysicalDeviceZeroInitializeWorkgroupMemoryFeatures);
-    case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES_KHR:
-        return sizeof(VkPhysicalDeviceDynamicRenderingFeaturesKHR);
     default:
-        LOG("Unknown structure for VkDeviceCreateInfo::pNext %u", item->sType);
         unreachable("Unknown structure for VkDeviceCreateInfo::pNext");
     }
     return 0;
