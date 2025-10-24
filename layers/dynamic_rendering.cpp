@@ -228,6 +228,8 @@ class RenderPassPool final {
     }
 
     static VkRenderPass CreateVkRenderPass(RenderPassDesc const& desc, PFN_vkCreateRenderPass create_render_pass, VkDevice device) {
+        // TODO: If we support separate depth/stencil attachments, we will be relying on `VK_KHR_separate_depth_stencil_layouts` and hence
+        // `VK_KHR_create_renderpass2`.
         // TODO: If we support depth/stencil resolve, we will be relying on `VK_KHR_depth_stencil_resolve` and hence
         // `VK_KHR_create_renderpass2`.
 
@@ -320,7 +322,9 @@ class RenderPassPool final {
             dst.colorAttachmentCount = uint32_t(storage.color_attachment_refs.size());
             dst.pColorAttachments = storage.color_attachment_refs.data();
             dst.pResolveAttachments =
-                storage.color_attachment_refs.empty() ? nullptr : storage.color_resolve_attachment_refs.data();
+                storage.color_resolve_attachment_refs.empty() ? nullptr : storage.color_resolve_attachment_refs.data();
+            dst.pDepthStencilAttachment =
+                storage.depth_stencil_attachment_ref.has_value() ? &storage.depth_stencil_attachment_ref.value() : nullptr;
             dst.preserveAttachmentCount = 0;
             dst.pPreserveAttachments = nullptr;
         }
@@ -1220,6 +1224,15 @@ VKAPI_ATTR void VKAPI_CALL CmdBeginRendering(VkCommandBuffer commandBuffer, cons
             // VUID-VkRenderingInfo-pDepthAttachment-06085:
             // > If neither pDepthAttachment or pStencilAttachment are NULL and the imageView member of either structure is not
             // VK_NULL_HANDLE, > the imageView member of each structure must be the same
+            if (pRenderingInfo->pDepthAttachment != nullptr && pRenderingInfo->pStencilAttachment != nullptr) {
+                VkRenderingAttachmentInfoKHR const& depth_attachment_info = *pRenderingInfo->pDepthAttachment;
+                VkRenderingAttachmentInfoKHR const& stencil_attachment_info = *pRenderingInfo->pStencilAttachment;
+                if (depth_attachment_info.imageView != VK_NULL_HANDLE && stencil_attachment_info.imageView != VK_NULL_HANDLE) {
+                    // TODO: Support separate depth/stencil images.
+                    ASSERT(depth_attachment_info.imageView == stencil_attachment_info.imageView);
+                }
+            }
+
             VkRenderingAttachmentInfoKHR const& attachment_info = pRenderingInfo->pDepthAttachment != nullptr
                                                                       ? *pRenderingInfo->pDepthAttachment
                                                                       : *pRenderingInfo->pStencilAttachment;
